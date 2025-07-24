@@ -1,0 +1,21 @@
+[project]
+name = "poker-datasets"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "dcaustin33",email = "dcaustin33@gmail.com"}
+]
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pokerkit (>=0.6.3,<0.7.0)",
+    "datasets (>=4.0.0,<5.0.0)",
+    "ipykernel (>=6.30.0,<7.0.0)",
+    "pandas (>=2.3.1,<3.0.0)",
+    "pydantic (>=2.11.7,<3.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
