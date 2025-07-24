@@ -229,6 +229,90 @@ def create_hand_history(actions: list[str]) -> HandHistory:
     )
 
 
+def parse_preflop_actions_multiple_actors(
+    current_actions: list[str], preflop_action: str, hero_pos: str, num_players: int=6, preflop_only: bool=False
+) -> list[str]:
+    """
+    Based on the current actions and the preflop action this should return
+    the actions for the preflop in the phh format
+
+    Ok so basically we should keep a list of actors who have folded - if we get to the next action
+    and the person we think should be going is not there then they have folded,
+    otherwise we append the action like normal.
+
+    Preflop only indicates that betting is going on in preflop and we should not
+    fold the rest of the players. Otherwise any that do not appear we will fold.
+    """
+    if pd.isna(preflop_action):
+        chunked_preflop_action = []
+    else:
+        chunked_preflop_action = chunk_by_two(preflop_action)
+    players_folded = []
+    players_active = []
+
+    expected_order = ["UTG", "HJ", "CO", "BTN", "SB", "BB"]
+
+    for i in range(len(chunked_preflop_action)):
+        person = chunked_preflop_action[i].split("/")[0]
+        action = chunked_preflop_action[i].split("/")[1]
+
+        player_num = position_to_number[person]
+
+        for expected_pos in expected_order:
+            expected_player_num = position_to_number[expected_pos]
+
+            if (
+                expected_player_num in players_active
+                or expected_player_num in players_folded
+            ):
+                continue
+
+            if expected_pos == person:
+                break
+
+            # this is assuming there is no fold readout which I think is accurate
+            if expected_player_num not in players_folded:
+                current_actions.append(f"p{expected_player_num + 1} fold")
+                players_folded.append(expected_player_num)
+
+        current_actions.append(f"p{player_num + 1} {parse_individual_action(action)}")
+        players_active.append(player_num)
+
+    # Add fold actions for any remaining players who haven't acted but come before hero
+    # (only add folds before hero position for training data correctness)
+    # Only add folds if players were supposed to act before hero based on the action sequence
+    hero_player_num = position_to_number[hero_pos]
+
+    # Check if the hero has actually acted yet in the sequence
+    hero_has_acted = hero_player_num in players_active
+
+    # Only add folds for players who should have acted before the hero if hero hasn't acted yet
+    # If hero has acted, don't add any additional folds as the sequence is complete
+    if not hero_has_acted:
+        for expected_pos in expected_order:
+            # Stop when we reach the hero position
+            if expected_pos == hero_pos:
+                break
+
+            expected_player_num = position_to_number[expected_pos]
+            if (
+                expected_player_num not in players_active
+                and expected_player_num not in players_folded
+            ):
+                current_actions.append(f"p{expected_player_num + 1} fold")
+                players_folded.append(expected_player_num)
+
+    if not preflop_only:
+        last_person_to_act = get_last_person_to_act_preflop(preflop_action)
+        for i in range(num_players):
+            i = (i + last_person_to_act) % 6
+            if i not in players_active and i not in players_folded:
+                current_actions.append(f"p{i + 1} fold")
+                players_folded.append(i)
+
+    return current_actions
+
+
 def create_pokerkit_state_postflop(row: pd.Series) -> HandHistory:
     """
     Based on the row this should return a pokerkit state
@@ -244,13 +328,12 @@ def create_pokerkit_state_postflop(row: pd.Series) -> HandHistory:
         row["preflop_action"], row["hero_position"]
     )
     actions = deal_hole_cards_without_state(
-        number_to_position[poker_bench_state.acting_actor], row["holding"]
+        number_to_position[poker_bench_state.acting_actor-1], row["holding"]
     )
-    actions = preflop_actions(actions, row["preflop_action"])
     actions = parse_preflop_actions_multiple_actors(
         actions,
         row["preflop_action"],
-        number_to_position[poker_bench_state.acting_actor],
+        number_to_position[poker_bench_state.acting_actor-1],
     )
     actions = deal_board_cards(actions, row["board_flop"])
 
@@ -301,87 +384,6 @@ def create_pokerkit_state_postflop(row: pd.Series) -> HandHistory:
     )
 
     return create_hand_history(actions)
-
-
-def parse_preflop_actions_multiple_actors(
-    current_actions: list[str], preflop_action: str, hero_pos: str
-) -> list[str]:
-    """
-    Based on the current actions and the preflop action this should return
-    the actions for the preflop in the phh format
-
-    Ok so basically we should keep a list of actors who have folded - if we get to the next action
-    and the person we think should be going is not there then they have folded,
-    otherwise we append the action like normal.
-    """
-    if pd.isna(preflop_action):
-        chunked_preflop_action = []
-    else:
-        chunked_preflop_action = chunk_by_two(preflop_action)
-    players_folded = []
-    players_active = []
-
-    # Track the expected order of players (starting from UTG)
-    expected_order = ["UTG", "HJ", "CO", "BTN", "SB", "BB"]
-
-    # Process each action in the preflop sequence
-    for i in range(len(chunked_preflop_action)):
-        person = chunked_preflop_action[i].split("/")[0]
-        action = chunked_preflop_action[i].split("/")[1]
-
-        # Find the player number for the current person
-        player_num = position_to_number[person]
-
-        # Add fold actions for any players who should have acted but didn't
-        # (they folded by not being present in the action sequence)
-        for expected_pos in expected_order:
-            expected_player_num = position_to_number[expected_pos]
-
-            # Skip if this player has already acted or folded
-            if (
-                expected_player_num in players_active
-                or expected_player_num in players_folded
-            ):
-                continue
-
-            # If we've reached the current person in the sequence, stop adding folds
-            if expected_pos == person:
-                break
-
-            # This player should have acted but didn't, so they folded
-            if expected_player_num not in players_folded:
-                current_actions.append(f"p{expected_player_num + 1} fold")
-                players_folded.append(expected_player_num)
-
-        # Add the current action
-        current_actions.append(f"p{player_num + 1} {parse_individual_action(action)}")
-        players_active.append(player_num)
-
-    # Add fold actions for any remaining players who haven't acted but come before hero
-    # (only add folds before hero position for training data correctness)
-    # Only add folds if players were supposed to act before hero based on the action sequence
-    hero_player_num = position_to_number[hero_pos]
-
-    # Check if the hero has actually acted yet in the sequence
-    hero_has_acted = hero_player_num in players_active
-
-    # Only add folds for players who should have acted before the hero if hero hasn't acted yet
-    # If hero has acted, don't add any additional folds as the sequence is complete
-    if not hero_has_acted:
-        for expected_pos in expected_order:
-            # Stop when we reach the hero position
-            if expected_pos == hero_pos:
-                break
-
-            expected_player_num = position_to_number[expected_pos]
-            if (
-                expected_player_num not in players_active
-                and expected_player_num not in players_folded
-            ):
-                current_actions.append(f"p{expected_player_num + 1} fold")
-                players_folded.append(expected_player_num)
-
-    return current_actions
 
 
 def create_pokerkit_state_preflop(row: pd.Series) -> HandHistory:
