@@ -34,6 +34,9 @@ def get_last_person_to_act_preflop(preflop_action: str) -> int:
     Based on the preflop action this should return
     the position of the last person to act
     """
+    # indicates nobody has acted yet so it is like the BB has acted
+    if pd.isna(preflop_action):
+        return 1
 
     try:
         last_actor = preflop_action.split("/")[-2]
@@ -305,7 +308,8 @@ def parse_preflop_actions_multiple_actors(
     if not preflop_only:
         last_person_to_act = get_last_person_to_act_preflop(preflop_action)
         for i in range(num_players):
-            i = (i + last_person_to_act) % 6
+            # adds 1 as that person has acted
+            i = (i + last_person_to_act + 1) % 6
             if i not in players_active and i not in players_folded:
                 current_actions.append(f"p{i + 1} fold")
                 players_folded.append(i)
@@ -399,7 +403,7 @@ def create_pokerkit_state_preflop(row: pd.Series) -> HandHistory:
     """
     actions = deal_hole_cards_without_state(row["hero_pos"], row["hero_holding"])
     actions = parse_preflop_actions_multiple_actors(
-        actions, row["prev_line"], row["hero_pos"]
+        actions, row["prev_line"], row["hero_pos"], preflop_only=True
     )
     actions = add_correct_decision(
         actions, row["correct_decision"], position_to_number[row["hero_pos"]] + 1

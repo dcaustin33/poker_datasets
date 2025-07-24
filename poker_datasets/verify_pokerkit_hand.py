@@ -27,7 +27,7 @@ def create_state(
             Automation.ANTE_POSTING,
             Automation.BET_COLLECTION,
             Automation.BLIND_OR_STRADDLE_POSTING,
-            Automation.HOLE_CARDS_SHOWING_OR_MUCKING,
+            # Automation.HOLE_CARDS_SHOWING_OR_MUCKING,
             Automation.HAND_KILLING,
             Automation.CHIPS_PUSHING,
             Automation.CHIPS_PULLING,
@@ -55,6 +55,12 @@ def translate_action_into_state(
             state.deal_hole(split_action[3])
         elif split_action[1] == "db":
             if state.all_in_status:
+                while True:
+                    try:
+                        state.show_or_muck_hole_cards()
+                    except Exception as e:
+                        break
+                        
                 while not state.can_burn_card():
                     state.select_runout_count(None)
             state.burn_card("??")
@@ -100,6 +106,5 @@ def verify_hand(
             state = translate_action_into_state(action, state)
         except Exception as e:
             print(f"Error translating action '{action}' into state: {e}")
-            raise e
             return False
     return True
