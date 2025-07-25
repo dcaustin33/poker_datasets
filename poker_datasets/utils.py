@@ -105,6 +105,5 @@ def verify_hand(
         try:
             state = translate_action_into_state(action, state)
         except Exception as e:
-            print(f"Error translating action '{action}' into state: {e}")
             return False
     return True

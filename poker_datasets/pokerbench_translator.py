@@ -61,7 +61,7 @@ def get_other_actor(preflop_action: str) -> int:
     raise ValueError("No other actor found")
 
 
-def get_all_preflop_actors(preflop_action: str, my_pos: str) -> list[str]:
+def get_all_preflop_actors(preflop_action: str, my_pos: str) -> PokerBenchState:
     """
     Based on the preflop action this should return
     all the actors in the preflop action
@@ -317,7 +317,7 @@ def parse_preflop_actions_multiple_actors(
     return current_actions
 
 
-def create_pokerkit_state_postflop(row: pd.Series) -> HandHistory:
+def create_pokerkit_state_postflop(row: pd.Series) -> tuple[HandHistory, int]:
     """
     Based on the row this should return a pokerkit state
 
@@ -354,7 +354,7 @@ def create_pokerkit_state_postflop(row: pd.Series) -> HandHistory:
         actions = add_correct_decision(
             actions, row["correct_decision"], poker_bench_state.acting_actor
         )
-        return create_hand_history(actions)
+        return create_hand_history(actions), poker_bench_state.acting_actor
 
     turn_action_row = (
         row["postflop_action"].split("dealcards")[1].rstrip("/").lstrip("/")[3:]
@@ -371,7 +371,7 @@ def create_pokerkit_state_postflop(row: pd.Series) -> HandHistory:
         actions = add_correct_decision(
             actions, row["correct_decision"], poker_bench_state.acting_actor
         )
-        return create_hand_history(actions)
+        return create_hand_history(actions), poker_bench_state.acting_actor
 
     river_action_row = (
         row["postflop_action"].split("dealcards")[2].rstrip("/").lstrip("/")[3:]
@@ -387,10 +387,10 @@ def create_pokerkit_state_postflop(row: pd.Series) -> HandHistory:
         actions, row["correct_decision"], poker_bench_state.acting_actor
     )
 
-    return create_hand_history(actions)
+    return create_hand_history(actions), poker_bench_state.acting_actor
 
 
-def create_pokerkit_state_preflop(row: pd.Series) -> HandHistory:
+def create_pokerkit_state_preflop(row: pd.Series) -> tuple[HandHistory, int]:
     """
     Based on the row this should return a pokerkit state
 
@@ -408,4 +408,4 @@ def create_pokerkit_state_preflop(row: pd.Series) -> HandHistory:
     actions = add_correct_decision(
         actions, row["correct_decision"], position_to_number[row["hero_pos"]] + 1
     )
-    return create_hand_history(actions)
+    return create_hand_history(actions), position_to_number[row["hero_pos"]] + 1

@@ -1,6 +1,7 @@
 from typing import Dict, List, Tuple
 
 from pokerkit import HandHistory
+from utils import create_state, translate_action_into_state, filter_sm_actions
 
 
 def parse_cards(cards_string: str) -> List[Tuple[str, str]]:
@@ -69,175 +70,64 @@ def parse_community_cards(action: str) -> List[Tuple[str, str]]:
 def extract_player_number(action: str) -> int:
     """Extract player number from action like 'p3 f'"""
     parts = action.split()
-    player_part = parts[0]  # 'p3'
-    return int(player_part[1:])  # extract number
+    for part in parts:
+        if part.startswith("p"):
+            return int(part[1:])
+    raise ValueError(f"Player number not found in action: {action}")
 
 
-def convert_actions_to_text(
-    actions: List[str], round_name: str = "preflop", big_blind: int = None
+def get_current_situation(state, player_number: int) -> str:
+    """"""
+    return (
+        f"Pot size: {state.total_pot_amount}, needed bet: {state.checking_or_calling_amount}, "
+        f"minimum raise: {state.min_completion_betting_or_raising_to_amount}, my stack: {state.stacks[player_number - 1]}"
+    )
+
+
+def convert_hand_to_narrative2(
+    hand_history: HandHistory, player_number: int, special_action_word: str = "ACTION"
 ) -> str:
-    """Convert list of actions to natural language"""
-    action_texts = []
+    """"""
+    state = create_state(
+        hand_history.blinds_or_straddles[0],
+        hand_history.starting_stacks,
+        len(hand_history.players),
+    )
+    filtered_actions = filter_sm_actions(hand_history.actions)
+    my_cards = []
+    for action in filtered_actions:
+        if action.startswith("d dh") and extract_player_number(action) == player_number:
+            my_cards = parse_cards(action.split()[-1])
+            break
 
-    # Track if any raises have occurred so far in this round
-    raise_occurred = False
+    if my_cards == [("?", "?"), ("?", "?")]:
+        return ""
 
-    # Track the current bet level for preflop big blind check detection
-    current_bet_level = big_blind if round_name == "preflop" and big_blind else 0
+    narrative = []
+    narrative.append(
+        f"There are {len(hand_history.players)} players at the table, I am player {player_number}."
+    )
+    narrative.append(
+        f"The starting stacks: {', '.join(map(str, hand_history.starting_stacks))}."
+    )
+    narrative.append(
+        f"The current small blind and big blind is {hand_history.blinds_or_straddles[0]} and {hand_history.blinds_or_straddles[1]}."
+    )
+    narrative.append(
+        f"My cards: {format_cards(my_cards)}. And the following is the action sequence:"
+    )
 
-    for action in actions:
-        parts = action.split()
-        player_num = int(parts[0][1:])  # extract from 'p3'
-        action_type = parts[1]
-
-        if action_type == "f":
-            action_texts.append(f"player {player_num} fold")
-        elif action_type == "cc":
-
-            if round_name in ["flop", "turn", "river"] and not raise_occurred:
-                action_texts.append(f"player {player_num} check")
-            elif round_name == "preflop" and not raise_occurred and big_blind:
-                action_texts.append(f"player {player_num} check")
-            else:
-                action_texts.append(f"player {player_num} call")
-
-        elif action_type == "cbr":
-            amount = float(parts[2])
-            action_texts.append(f"player {player_num} raise to {amount}")
-
-            if round_name == "preflop":
-                if amount > current_bet_level:
-                    raise_occurred = True
-            else:
-                raise_occurred = True
-        elif action_type == "pb":
-            action_texts.append(f"player {player_num} bring in")
-        else:
-            # Handle other action types as needed
-            action_texts.append(f"player {player_num} {action_type}")
-
-    return ", ".join(action_texts)
-
-
-def convert_hand_to_narratives(hand_history: HandHistory) -> Dict[int, str]:
-    """Convert HandHistory object to natural language narratives for each player"""
-    # Parse initial data
-    player_count = len(hand_history.players)
-    starting_stacks = hand_history.starting_stacks
-    finishing_stacks = getattr(hand_history, "finishing_stacks", None)
-    small_blind = hand_history.blinds_or_straddles[0]
-    big_blind = hand_history.blinds_or_straddles[1]
-
-    # Extract hole cards for each player
-    hole_cards = {}
-    for action in hand_history.actions:
+    for action in filtered_actions:
         if action.startswith("d dh"):
-            player_num, cards = parse_deal_action(action)
-            hole_cards[player_num] = cards
-
-    # Group actions by betting rounds
-    betting_rounds = {"preflop": [], "flop": [], "turn": [], "river": []}
-    community_cards = {"flop": [], "turn": [], "river": []}
-
-    current_round = "preflop"
-    for action in hand_history.actions:
-        if action.startswith("d db"):  # community cards
-            cards = parse_community_cards(action)
-            if len(cards) == 3:
-                current_round = "flop"
-                community_cards["flop"] = cards
-            elif current_round == "flop":
-                current_round = "turn"
-                community_cards["turn"] = cards
-            else:
-                current_round = "river"
-                community_cards["river"] = cards
-        elif not action.startswith("d dh"):  # betting action (skip hole card deals)
-            betting_rounds[current_round].append(action)
-
-    # Track who's still active and when they folded
-    active_players = set(range(1, player_count + 1))
-    fold_rounds = {}  # player -> round they folded
-
-    for round_name, actions in betting_rounds.items():
-        for action in actions:
-            if action.split()[1] == "f":  # fold action
-                player = extract_player_number(action)
-                if player in active_players:
-                    active_players.remove(player)
-                    fold_rounds[player] = round_name
-
-    narratives = {}
-
-    # Generate narrative for each player
-    for player_num in range(1, player_count + 1):
-        narrative = []
-        if hole_cards[player_num] == [("?", "?"), ("?", "?")]:
+            state = translate_action_into_state(action, state)
             continue
-
-        # Header
-        narrative.append(
-            f"There are {player_count} players at the table, I am player {player_num}."
-        )
-        narrative.append(
-            f"The starting stacks: {', '.join(map(str, starting_stacks))}."
-        )
-        narrative.append(
-            f"The current small blind and big blind is {small_blind} and {big_blind}."
-        )
-        narrative.append(f"My cards: {format_cards(hole_cards[player_num])}.")
-
-        # If player folded, skip to end after showing actions up to fold
-        if player_num in fold_rounds:
-            fold_round = fold_rounds[player_num]
-
-            # Show actions up to and including the fold
-            for round_name in ["preflop", "flop", "turn", "river"]:
-                if betting_rounds[round_name]:  # only show rounds that have actions
-                    if round_name != "preflop" and community_cards[round_name]:
-                        narrative.append(
-                            f"The {round_name}: {format_cards(community_cards[round_name])}."
-                        )
-
-                    actions_text = convert_actions_to_text(
-                        betting_rounds[round_name], round_name, big_blind
-                    )
-                    narrative.append(f"The {round_name} actions: {actions_text}.")
-
-                    if round_name == fold_round:
-                        break
-        else:
-            # Show all rounds for active players
-            for round_name in ["preflop", "flop", "turn", "river"]:
-                if betting_rounds[round_name]:  # only show rounds that have actions
-                    if round_name != "preflop" and community_cards[round_name]:
-                        narrative.append(
-                            f"The {round_name}: {format_cards(community_cards[round_name])}."
-                        )
-
-                    actions_text = convert_actions_to_text(
-                        betting_rounds[round_name], round_name, big_blind
-                    )
-                    narrative.append(f"The {round_name} actions: {actions_text}.")
-
-        # Only add final cards reveal and winnings if finishing_stacks is available
-        if finishing_stacks is not None:
-            # Final cards reveal
-            narrative.append("")
-            narrative.append("Final hole cards:")
-            for p_num in range(1, player_count + 1):
-                if p_num == player_num:
-                    continue
-                player_name = hand_history.players[p_num - 1]
-                cards_text = format_cards(hole_cards[p_num])
-                narrative.append(f"Player {p_num} ({player_name}): {cards_text}")
-
-            # Winnings
-            winnings = (
-                finishing_stacks[player_num - 1] - starting_stacks[player_num - 1]
+        if action.startswith(f"p{player_number}"):
+            narrative.append(get_current_situation(state, player_number))
+            narrative.append(
+                f"My action: {special_action_word} {action.replace(f'p{player_number} ', '')}"
             )
-            narrative.append(f"My winnings from the hand: {winnings}")
+        else:
+            narrative.append(action)
+        state = translate_action_into_state(action, state)
 
-        narratives[player_num] = "\n".join(narrative)
-
-    return narratives
+    return "\n".join(narrative)
