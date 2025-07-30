@@ -4,6 +4,10 @@ from pokerkit import HandHistory
 from utils import create_state, translate_action_into_state, filter_sm_actions
 
 
+INSTRUCTION_TUNED_PROMPT = """You are an expert poker player tasked with making a decision. \
+Your choices are to cc (check/call), f (fold), or cbr (raise). \
+You must respond with a singe phrase: 'cc', 'f', or 'cbr'.\n"""
+
 def parse_cards(cards_string: str) -> List[Tuple[str, str]]:
     """Parse card string like 'AcKh' into list of readable cards"""
     cards = []
@@ -84,15 +88,9 @@ def get_current_situation(state, player_number: int) -> str:
     )
 
 
-def convert_hand_to_narrative2(
-    hand_history: HandHistory, player_number: int, special_action_word: str = "ACTION"
-) -> str:
-    """"""
-    state = create_state(
-        hand_history.blinds_or_straddles[0],
-        hand_history.starting_stacks,
-        len(hand_history.players),
-    )
+def get_hand_background(hand_history: HandHistory, player_number: int) -> str:
+    """Returns the string situtation for both pretraining and instruction tuned"""
+    
     filtered_actions = filter_sm_actions(hand_history.actions)
     my_cards = []
     for action in filtered_actions:
@@ -105,7 +103,7 @@ def convert_hand_to_narrative2(
 
     narrative = []
     narrative.append(
-        f"There are {len(hand_history.players)} players at the table, I am player {player_number}."
+        f"There are {len(hand_history.players)} players at the table, I am p{player_number}."
     )
     narrative.append(
         f"The starting stacks: {', '.join(map(str, hand_history.starting_stacks))}."
@@ -114,14 +112,69 @@ def convert_hand_to_narrative2(
         f"The current small blind and big blind is {hand_history.blinds_or_straddles[0]} and {hand_history.blinds_or_straddles[1]}."
     )
     narrative.append(
-        f"My cards: {format_cards(my_cards)}. And the following is the action sequence:"
+        f"My cards: {format_cards(my_cards)}. And the following is the action sequence if any actions have happened:"
     )
+    return "\n".join(narrative)
+
+def convert_hand_to_narrative2(
+    hand_history: HandHistory, player_number: int, special_action_word: str = "ACTION"
+) -> str:
+    """"""
+    state = create_state(
+        hand_history.blinds_or_straddles[0],
+        hand_history.starting_stacks,
+        len(hand_history.players),
+    )
+    narrative = []
+    narrative.append(get_hand_background(hand_history, player_number))
+    filtered_actions = filter_sm_actions(hand_history.actions)
 
     for action in filtered_actions:
         if action.startswith("d dh"):
             state = translate_action_into_state(action, state)
             continue
         if action.startswith(f"p{player_number}"):
+            narrative.append(get_current_situation(state, player_number))
+            narrative.append(
+                f"My action: {special_action_word} {action.replace(f'p{player_number} ', '')}"
+            )
+        else:
+            narrative.append(action)
+        state = translate_action_into_state(action, state)
+
+    return "\n".join(narrative)
+
+
+def convert_hand_to_narrative_instruction_tuned(
+    hand_history: HandHistory, player_number: int, special_action_word: str = "ACTION"
+) -> str:
+    """
+    This function will return three lists of strings: instruction, response, and value
+    The response will be check/call, fold or raise.
+    The instruction will be all of the info necessary to make a decision.
+    The value will be the value of the raise if one happens - otherwise -100.
+    """
+    state = create_state(
+        hand_history.blinds_or_straddles[0],
+        hand_history.starting_stacks,
+        len(hand_history.players),
+    )
+    base_instruction = get_hand_background(hand_history, player_number)
+    base_instruction = (
+        base_instruction + "\nIf there are any actions that have happened, they will be pasted here:\n"
+    )
+    filtered_actions = filter_sm_actions(hand_history.actions)
+
+    instruction = []
+    response = []
+    value = []
+
+    for action in filtered_actions:
+        if action.startswith("d dh"):
+            state = translate_action_into_state(action, state)
+            continue
+        if action.startswith(f"p{player_number}"):
+            instruction.append(base_in)
             narrative.append(get_current_situation(state, player_number))
             narrative.append(
                 f"My action: {special_action_word} {action.replace(f'p{player_number} ', '')}"

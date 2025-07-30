@@ -1,7 +1,7 @@
 from huggingface_hub import HfApi
 
 if __name__ == "__main__":
-    file = "/Users/derek/Desktop/poker_datasets/datasets/all_narratives_test.json"
+    file = "/Users/derek/Desktop/poker_datasets/datasets/all_narratives_train.json"
     api = HfApi()
     api.upload_file(
         path_or_fileobj=file,

@@ -4,13 +4,14 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
 import tqdm
-from hand_to_text import convert_hand_to_narrative2
+from hand_to_text import convert_hand_to_narrative2, convert_hand_to_narrative_instruction_tuned
 from pokerbench_translator import (
     create_pokerkit_state_postflop,
     create_pokerkit_state_preflop,
 )
 from pokerkit import HandHistory
 from utils import verify_hand
+import random
 
 
 def process_phh_file(file_info):
@@ -182,6 +183,7 @@ def create_combined_dataset(
     max_workers: int = 4,
     output_path_train: str = None,
     output_path_test: str = None,
+    instruction_tuned: bool = False,
 ) -> list[str]:
     """
     Demonstration function showing how to use the multithreaded dataset creation functions.
