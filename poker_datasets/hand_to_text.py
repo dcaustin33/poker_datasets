@@ -1,3 +1,4 @@
+from optparse import Values
 from typing import Dict, List, Tuple
 
 from pokerkit import HandHistory
@@ -128,7 +129,8 @@ def convert_hand_to_narrative2(
     narrative = []
     narrative.append(get_hand_background(hand_history, player_number))
     filtered_actions = filter_sm_actions(hand_history.actions)
-
+    values_bet = []
+    
     for action in filtered_actions:
         if action.startswith("d dh"):
             state = translate_action_into_state(action, state)
@@ -138,12 +140,35 @@ def convert_hand_to_narrative2(
             narrative.append(
                 f"My action: {special_action_word} {action.replace(f'p{player_number} ', '')}"
             )
+            stack_before = state.stacks[player_number - 1]
         else:
             narrative.append(action)
         state = translate_action_into_state(action, state)
+        if action.startswith(f"p{player_number}"):
+            stack_after = state.stacks[player_number - 1]
+            values_bet.append(extract_value_from_action(action, stack_before, stack_after))
 
-    return "\n".join(narrative)
+    return "\n".join(narrative), values_bet
 
+
+def translate_action_to_english(action: str) -> str:
+    """Translate an action into English"""
+    if "cc" in action:
+        return "cc"
+    elif "f" in action:
+        return "f"
+    elif "cbr" in action:
+        return "cbr"
+    else:
+        raise ValueError(f"Invalid action: {action}")
+    
+def extract_value_from_action(action: str, stack_before: int, stack_after: int) -> int:
+    """Extract the value of the raise from an action"""
+    if "cbr" in action:
+        return 1 - (stack_after / stack_before)
+    else:
+        return -100
+    
 
 def convert_hand_to_narrative_instruction_tuned(
     hand_history: HandHistory, player_number: int, special_action_word: str = "ACTION"
@@ -159,10 +184,7 @@ def convert_hand_to_narrative_instruction_tuned(
         hand_history.starting_stacks,
         len(hand_history.players),
     )
-    base_instruction = get_hand_background(hand_history, player_number)
-    base_instruction = (
-        base_instruction + "\nIf there are any actions that have happened, they will be pasted here:\n"
-    )
+    base_instruction = INSTRUCTION_TUNED_PROMPT + "\n" + get_hand_background(hand_history, player_number)
     filtered_actions = filter_sm_actions(hand_history.actions)
 
     instruction = []
@@ -174,13 +196,16 @@ def convert_hand_to_narrative_instruction_tuned(
             state = translate_action_into_state(action, state)
             continue
         if action.startswith(f"p{player_number}"):
-            instruction.append(base_in)
-            narrative.append(get_current_situation(state, player_number))
-            narrative.append(
-                f"My action: {special_action_word} {action.replace(f'p{player_number} ', '')}"
-            )
-        else:
-            narrative.append(action)
+            current_situation = get_current_situation(state, player_number)
+            instruction.append(f"{base_instruction}\n{current_situation}")
+            response.append(translate_action_to_english(action))
+            stack_before = state.stacks[player_number - 1]
+            
+        base_instruction = f"{base_instruction}\n{action}"
         state = translate_action_into_state(action, state)
+        if action.startswith(f"p{player_number}"):
+            stack_after = state.stacks[player_number - 1]
+            value.append(extract_value_from_action(action, stack_before, stack_after))
 
-    return "\n".join(narrative)
+    return instruction, response, value
+
