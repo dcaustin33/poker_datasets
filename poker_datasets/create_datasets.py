@@ -62,7 +62,7 @@ def process_phh_file(file_info, instruction_tuned=False):
     return results
 
 
-def create_pluribus_dataset(path_to_pluribus_hands: str, max_workers: int = 4, instruction_tuned: bool = False):
+def create_pluribus_dataset(path_to_pluribus_hands: str, max_workers: int = 4, instruction_tuned: bool = False, test_percentage: float = 0.0):
     """
     Multithreaded version of create_pluribus_dataset
 
@@ -80,7 +80,8 @@ def create_pluribus_dataset(path_to_pluribus_hands: str, max_workers: int = 4, i
 
     print(f"Found {len(phh_files)} .phh files to process")
 
-    text_narratives = []
+    train_narratives = []
+    test_narratives = []
 
     # Process files in parallel
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -98,12 +99,15 @@ def create_pluribus_dataset(path_to_pluribus_hands: str, max_workers: int = 4, i
         ):
             try:
                 results = future.result()
-                text_narratives.extend(results)
+                if random.random() < test_percentage:
+                    test_narratives.extend(results)
+                else:
+                    train_narratives.extend(results)
             except Exception as e:
                 file_info = future_to_file[future]
                 print(f"Error processing {file_info[0]}: {e}")
 
-    return text_narratives
+    return train_narratives, test_narratives
 
 
 def process_dataframe_row(args):
@@ -315,18 +319,15 @@ def create_combined_dataset(
     # Process pluribus hand histories
     if path_to_pluribus_hands:
         print("Processing pluribus hand histories...")
-        pluribus_narratives = create_pluribus_dataset(
-            path_to_pluribus_hands, max_workers=max_workers, instruction_tuned=instruction_tuned
+        pluribus_train_narratives, pluribus_test_narratives = create_pluribus_dataset(
+            path_to_pluribus_hands, max_workers=max_workers, instruction_tuned=instruction_tuned, test_percentage=1-pluribus_percentage_train
         )
-        if pluribus_percentage_train < 1.0:
-            random.shuffle(pluribus_narratives)
-            train_number = int(len(pluribus_narratives) * pluribus_percentage_train)
-            all_train_narratives.extend(pluribus_narratives[:train_number])
-            all_test_narratives.extend(pluribus_narratives[train_number:])
-            print(
-                f"Added {train_number} train narratives "
-                f"and {len(pluribus_narratives) - train_number} test narratives"
-            )
+        all_train_narratives.extend(pluribus_train_narratives)
+        all_test_narratives.extend(pluribus_test_narratives)
+        print(
+            f"Added {len(pluribus_train_narratives)} train narratives "
+            f"and {len(pluribus_test_narratives)} test narratives"
+        )
 
     # Optionally save to file
     if output_path_train:
@@ -346,10 +347,10 @@ def create_combined_dataset(
 if __name__ == "__main__":
     # Example usage
 
-    path_to_pokerbench_preflop_train = "/Users/derek/Desktop/poker_datasets/datasets/preflop_60k_train_set_game_scenario_information.csv"
-    path_to_pokerbench_postflop_train = "/Users/derek/Desktop/poker_datasets/datasets/postflop_500k_train_set_game_scenario_information.csv"
-    path_to_pokerbench_preflop_test = "/Users/derek/Desktop/poker_datasets/datasets/preflop_1k_test_set_game_scenario_information.csv"
-    path_to_pokerbench_postflop_test = "/Users/derek/Desktop/poker_datasets/datasets/postflop_10k_test_set_game_scenario_information.csv"
+    # path_to_pokerbench_preflop_train = "/Users/derek/Desktop/poker_datasets/datasets/preflop_60k_train_set_game_scenario_information.csv"
+    # path_to_pokerbench_postflop_train = "/Users/derek/Desktop/poker_datasets/datasets/postflop_500k_train_set_game_scenario_information.csv"
+    # path_to_pokerbench_preflop_train = "/Users/derek/Desktop/poker_datasets/datasets/preflop_1k_test_set_game_scenario_information.csv"
+    # path_to_pokerbench_postflop_train = "/Users/derek/Desktop/poker_datasets/datasets/postflop_10k_test_set_game_scenario_information.csv"
     
     
     # these are for if we want a quick test
@@ -359,18 +360,19 @@ if __name__ == "__main__":
     path_to_pluribus_hands = "/Users/derek/Desktop/phh-dataset/data/pluribus"
     max_workers = os.cpu_count()
     pluribus_percentage_train = 0.8
-    output_path_train = "/Users/derek/Desktop/poker_datasets/datasets/all_narratives_pretrain_train.json"
-    output_path_test = "/Users/derek/Desktop/poker_datasets/datasets/all_narratives_pretrain_test.json"
-    instruction_tuned = False
+    output_path_train = "/Users/derek/Desktop/poker_datasets/datasets/pluribus_all_narratives_it_train.json"
+    output_path_test = "/Users/derek/Desktop/poker_datasets/datasets/pluribus_all_narratives_it_test.json"
+    instruction_tuned = True
 
     example_narratives = create_combined_dataset(
-        path_to_pokerbench_preflop_train=path_to_pokerbench_preflop_train,
-        path_to_pokerbench_postflop_train=path_to_pokerbench_postflop_train,
-        path_to_pokerbench_preflop_test=path_to_pokerbench_preflop_test,
-        path_to_pokerbench_postflop_test=path_to_pokerbench_postflop_test,
+        # path_to_pokerbench_preflop_train=path_to_pokerbench_preflop_train,
+        # path_to_pokerbench_postflop_train=path_to_pokerbench_postflop_train,
+        # path_to_pokerbench_preflop_test=path_to_pokerbench_preflop_test,
+        # path_to_pokerbench_postflop_test=path_to_pokerbench_postflop_test,
         path_to_pluribus_hands=path_to_pluribus_hands,
         max_workers=max_workers,
         output_path_train=output_path_train,
         output_path_test=output_path_test,
         instruction_tuned=instruction_tuned,
+        pluribus_percentage_train=pluribus_percentage_train,
     )
