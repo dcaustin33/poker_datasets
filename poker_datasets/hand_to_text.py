@@ -2,7 +2,7 @@ from optparse import Values
 from typing import Dict, List, Tuple
 
 from pokerkit import HandHistory
-from utils import create_state, translate_action_into_state, filter_sm_actions
+from poker_datasets.utils import create_state, translate_action_into_state, filter_sm_actions
 
 
 INSTRUCTION_TUNED_PROMPT = """You are an expert poker player tasked with making a decision. \
