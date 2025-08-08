@@ -1,4 +1,4 @@
-from pokerkit import Automation, Mode, NoLimitTexasHoldem
+from pokerkit import Automation, Mode, NoLimitTexasHoldem, HandHistory
 
 
 def create_state(
@@ -18,19 +18,17 @@ def create_state(
     ), "Starting stacks must be in order of sb first, bb second, etc."
 
     big_blind = 2 * small_blind
-    min_bet = big_blind
-    raw_blinds_or_straddles = (small_blind, big_blind)
-    raw_antes = {}
-    raw_starting_stacks = starting_stacks
     return NoLimitTexasHoldem.create_state(
         automations=(
             Automation.ANTE_POSTING,
             Automation.BET_COLLECTION,
             Automation.BLIND_OR_STRADDLE_POSTING,
-            # Automation.HOLE_CARDS_SHOWING_OR_MUCKING,
             Automation.HAND_KILLING,
             Automation.CHIPS_PUSHING,
             Automation.CHIPS_PULLING,
+            Automation.CARD_BURNING,
+            Automation.RUNOUT_COUNT_SELECTION,
+            Automation.HOLE_CARDS_SHOWING_OR_MUCKING,
         ),
         ante_trimming_status=False,
         raw_antes={},
@@ -39,6 +37,24 @@ def create_state(
         raw_starting_stacks=starting_stacks,
         player_count=player_count,
         mode=Mode.CASH_GAME,
+    )
+    
+    
+def create_hand_history(
+    actions: list[str],
+    starting_stacks: list[int] = [100, 100, 100, 100, 100, 100],
+    blinds_or_straddles: list[int] = [0.5, 1],
+) -> HandHistory:
+    """
+    Creates a hand histor for poker bench
+    """
+    return HandHistory(
+        variant="NT",
+        actions=actions,
+        antes=[0] * starting_stacks.count(0),
+        starting_stacks=starting_stacks,
+        blinds_or_straddles=blinds_or_straddles,
+        players = [f"p{i + 1}" for i in range(len(starting_stacks))],
     )
 
 
@@ -63,7 +79,7 @@ def translate_action_into_state(
                         
                 while not state.can_burn_card():
                     state.select_runout_count(None)
-            state.burn_card("??")
+            # state.burn_card("??") This should be done automatically now
             state.deal_board(split_action[2])
         else:
             raise ValueError(f"Invalid action: {action}")

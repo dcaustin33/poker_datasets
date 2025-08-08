@@ -148,7 +148,7 @@ def preflop_actions(current_actions: list[str], preflop_action: str) -> list[str
                     player_num not in players_folded
                     and player_num not in players_active
                 ):
-                    current_actions.append(f"p{player_num + 1} fold")
+                    current_actions.append(f"p{player_num + 1} f")
                     players_folded.append(player_num)
     return current_actions
 
@@ -230,6 +230,8 @@ def create_hand_history(actions: list[str]) -> HandHistory:
         blinds_or_straddles=[0.5, 1],
         players=["SB", "BB", "UTG", "HJ", "CO", "BTN"],
     )
+    
+
 
 
 def parse_preflop_actions_multiple_actors(
@@ -275,7 +277,7 @@ def parse_preflop_actions_multiple_actors(
 
             # this is assuming there is no fold readout which I think is accurate
             if expected_player_num not in players_folded:
-                current_actions.append(f"p{expected_player_num + 1} fold")
+                current_actions.append(f"p{expected_player_num + 1} f")
                 players_folded.append(expected_player_num)
 
         current_actions.append(f"p{player_num + 1} {parse_individual_action(action)}")
@@ -302,7 +304,7 @@ def parse_preflop_actions_multiple_actors(
                 expected_player_num not in players_active
                 and expected_player_num not in players_folded
             ):
-                current_actions.append(f"p{expected_player_num + 1} fold")
+                current_actions.append(f"p{expected_player_num + 1} f")
                 players_folded.append(expected_player_num)
 
     if not preflop_only:
@@ -311,7 +313,7 @@ def parse_preflop_actions_multiple_actors(
             # adds 1 as that person has acted
             i = (i + last_person_to_act + 1) % 6
             if i not in players_active and i not in players_folded:
-                current_actions.append(f"p{i + 1} fold")
+                current_actions.append(f"p{i + 1} f")
                 players_folded.append(i)
 
     return current_actions
