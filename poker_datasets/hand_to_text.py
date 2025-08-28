@@ -2,12 +2,17 @@ from optparse import Values
 from typing import Dict, List, Tuple
 
 from pokerkit import HandHistory
-from poker_datasets.utils import create_state, translate_action_into_state, filter_sm_actions
+from poker_datasets.utils import (
+    create_state,
+    translate_action_into_state,
+    filter_sm_actions,
+)
 
 
 INSTRUCTION_TUNED_PROMPT = """You are an expert poker player tasked with making a decision. \
 Your choices are to cc (check/call), f (fold), or cbr (raise). \
 You must respond with a singe phrase: 'cc', 'f', or 'cbr'.\n"""
+
 
 def parse_cards(cards_string: str) -> List[Tuple[str, str]]:
     """Parse card string like 'AcKh' into list of readable cards"""
@@ -91,7 +96,7 @@ def get_current_situation(state, player_number: int) -> str:
 
 def get_hand_background(hand_history: HandHistory, player_number: int) -> str:
     """Returns the string situtation for both pretraining and instruction tuned"""
-    
+
     filtered_actions = filter_sm_actions(hand_history.actions)
     my_cards = []
     for action in filtered_actions:
@@ -117,6 +122,7 @@ def get_hand_background(hand_history: HandHistory, player_number: int) -> str:
     )
     return "\n".join(narrative)
 
+
 def convert_hand_to_narrative2(
     hand_history: HandHistory, player_number: int, special_action_word: str = "ACTION"
 ) -> str:
@@ -130,7 +136,7 @@ def convert_hand_to_narrative2(
     narrative.append(get_hand_background(hand_history, player_number))
     filtered_actions = filter_sm_actions(hand_history.actions)
     values_bet = []
-    
+
     for action in filtered_actions:
         if action.startswith("d dh"):
             state = translate_action_into_state(action, state)
@@ -146,7 +152,9 @@ def convert_hand_to_narrative2(
         state = translate_action_into_state(action, state)
         if action.startswith(f"p{player_number}"):
             stack_after = state.stacks[player_number - 1]
-            values_bet.append(extract_value_from_action(action, stack_before, stack_after))
+            values_bet.append(
+                extract_value_from_action(action, stack_before, stack_after)
+            )
 
     return "\n".join(narrative), values_bet
 
@@ -161,17 +169,21 @@ def translate_action_to_english(action: str) -> str:
         return "cbr"
     else:
         raise ValueError(f"Invalid action: {action}")
-    
+
+
 def extract_value_from_action(action: str, stack_before: int, stack_after: int) -> int:
     """Extract the value of the raise from an action"""
     if "cbr" in action:
         return 1 - (stack_after / stack_before)
     else:
         return -100
-    
+
 
 def convert_hand_to_narrative_instruction_tuned(
-    hand_history: HandHistory, player_number: int, special_action_word: str = "ACTION"
+    hand_history: HandHistory,
+    player_number: int,
+    special_action_word: str = "ACTION",
+    simulation: bool = False,
 ) -> str:
     """
     This function will return three lists of strings: instruction, response, and value
@@ -184,13 +196,18 @@ def convert_hand_to_narrative_instruction_tuned(
         hand_history.starting_stacks,
         len(hand_history.players),
     )
-    base_instruction = INSTRUCTION_TUNED_PROMPT + "\n" + get_hand_background(hand_history, player_number)
+    base_instruction = (
+        INSTRUCTION_TUNED_PROMPT
+        + "\n"
+        + get_hand_background(hand_history, player_number)
+    )
     filtered_actions = filter_sm_actions(hand_history.actions)
 
     instruction = []
     response = []
     value = []
 
+    print(filtered_actions)
     for action in filtered_actions:
         if action.startswith("d dh"):
             state = translate_action_into_state(action, state)
@@ -200,15 +217,15 @@ def convert_hand_to_narrative_instruction_tuned(
             instruction.append(f"{base_instruction}\n{current_situation}")
             response.append(translate_action_to_english(action))
             stack_before = state.stacks[player_number - 1]
-            
+
         base_instruction = f"{base_instruction}\n{action}"
         state = translate_action_into_state(action, state)
         if action.startswith(f"p{player_number}"):
             stack_after = state.stacks[player_number - 1]
             value.append(extract_value_from_action(action, stack_before, stack_after))
-    if len(instruction) == 0:
+    if len(instruction) == 0 or simulation:
         current_situation = get_current_situation(state, player_number)
         instruction.append(f"{base_instruction}\n{current_situation}")
 
+    print(instruction)
     return instruction, response, value
-
