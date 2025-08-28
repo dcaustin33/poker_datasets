@@ -207,7 +207,6 @@ def convert_hand_to_narrative_instruction_tuned(
     response = []
     value = []
 
-    print(filtered_actions)
     for action in filtered_actions:
         if action.startswith("d dh"):
             state = translate_action_into_state(action, state)
@@ -227,5 +226,4 @@ def convert_hand_to_narrative_instruction_tuned(
         current_situation = get_current_situation(state, player_number)
         instruction.append(f"{base_instruction}\n{current_situation}")
 
-    print(instruction)
     return instruction, response, value
