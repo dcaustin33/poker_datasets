@@ -363,15 +363,15 @@ if __name__ == "__main__":
     path_to_pluribus_hands = "/Users/derek/Desktop/phh-dataset/data/pluribus"
     max_workers = os.cpu_count()
     pluribus_percentage_train = 0.8
-    output_path_train = "/Users/derek/Desktop/poker_datasets/datasets/all_narratives_pt_train.json"
-    output_path_test = "/Users/derek/Desktop/poker_datasets/datasets/all_narratives_pt_test.json"
-    instruction_tuned = False
+    output_path_train = "/Users/derek/Desktop/poker_datasets/datasets/pluribus_it_train.json"
+    output_path_test = "/Users/derek/Desktop/poker_datasets/datasets/pluribus_it_test.json"
+    instruction_tuned = True
 
     example_narratives = create_combined_dataset(
-        path_to_pokerbench_preflop_train=path_to_pokerbench_preflop_train,
-        path_to_pokerbench_postflop_train=path_to_pokerbench_postflop_train,
-        path_to_pokerbench_preflop_test=path_to_pokerbench_preflop_test,
-        path_to_pokerbench_postflop_test=path_to_pokerbench_postflop_test,
+        # path_to_pokerbench_preflop_train=path_to_pokerbench_preflop_train,
+        # path_to_pokerbench_postflop_train=path_to_pokerbench_postflop_train,
+        # path_to_pokerbench_preflop_test=path_to_pokerbench_preflop_test,
+        # path_to_pokerbench_postflop_test=path_to_pokerbench_postflop_test,
         path_to_pluribus_hands=path_to_pluribus_hands,
         max_workers=max_workers,
         output_path_train=output_path_train,
