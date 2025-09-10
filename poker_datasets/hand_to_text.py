@@ -94,7 +94,9 @@ def get_current_situation(state, player_number: int) -> str:
     )
 
 
-def get_hand_background(hand_history: HandHistory, player_number: int) -> str:
+def get_hand_background(
+    hand_history: HandHistory, player_number: int, phh_file: bool = False
+) -> str:
     """Returns the string situtation for both pretraining and instruction tuned"""
 
     filtered_actions = filter_sm_actions(hand_history.actions)
@@ -106,16 +108,24 @@ def get_hand_background(hand_history: HandHistory, player_number: int) -> str:
 
     if my_cards == [("?", "?"), ("?", "?")]:
         return ""
+    
+    stacks = hand_history.starting_stacks
+    small_blind = hand_history.blinds_or_straddles[0]
+    big_blind = hand_history.blinds_or_straddles[1]
+    if phh_file:
+        stacks = [stack / 100 for stack in stacks]
+        small_blind = small_blind / 100
+        big_blind = big_blind / 100
 
     narrative = []
     narrative.append(
         f"There are {len(hand_history.players)} players at the table, I am p{player_number}."
     )
     narrative.append(
-        f"The starting stacks: {', '.join(map(str, hand_history.starting_stacks))}."
+        f"The starting stacks: {', '.join(map(str, stacks))}."
     )
     narrative.append(
-        f"The current small blind and big blind is {hand_history.blinds_or_straddles[0]} and {hand_history.blinds_or_straddles[1]}."
+        f"The current small blind and big blind is {small_blind} and {big_blind}."
     )
     narrative.append(
         f"My cards: {format_cards(my_cards)}. And the following is the action sequence if any actions have happened:"
@@ -124,17 +134,24 @@ def get_hand_background(hand_history: HandHistory, player_number: int) -> str:
 
 
 def convert_hand_to_narrative2(
-    hand_history: HandHistory, player_number: int, special_action_word: str = "ACTION"
+    hand_history: HandHistory, player_number: int, special_action_word: str = "ACTION", phh_file: bool = False
 ) -> str:
     """"""
-    state = create_state(
-        hand_history.blinds_or_straddles[0],
-        hand_history.starting_stacks,
-        len(hand_history.players),
+    if phh_file:
+        state = create_state(
+            hand_history.blinds_or_straddles[0] / 100,
+            [stack / 100 for stack in hand_history.starting_stacks],
+            len(hand_history.players),
+        )
+    else:
+        state = create_state(
+            hand_history.blinds_or_straddles[0],
+            hand_history.starting_stacks,
+            len(hand_history.players),
     )
     narrative = []
-    narrative.append(get_hand_background(hand_history, player_number))
-    filtered_actions = filter_sm_actions(hand_history.actions)
+    narrative.append(get_hand_background(hand_history, player_number, phh_file))
+    filtered_actions = filter_sm_actions(hand_history.actions, phh_file)
     values_bet = []
 
     for action in filtered_actions:
@@ -184,24 +201,36 @@ def convert_hand_to_narrative_instruction_tuned(
     player_number: int,
     special_action_word: str = "ACTION",
     simulation: bool = False,
+    phh_file: bool = False,
 ) -> str:
     """
     This function will return three lists of strings: instruction, response, and value
     The response will be check/call, fold or raise.
     The instruction will be all of the info necessary to make a decision.
     The value will be the value of the raise if one happens - otherwise -100.
+
+    phh file will indicate I should be dividing by 100 I want the stack
+    sizes and bet sizes to be the same as poker bench. Poker bench stacks are 100
+    with sb/bb of 0.5/1 where as pluribus stacks are 10000 with sb/bb of 50/100
     """
-    state = create_state(
-        hand_history.blinds_or_straddles[0],
-        hand_history.starting_stacks,
-        len(hand_history.players),
-    )
+    if phh_file:
+        state = create_state(
+            hand_history.blinds_or_straddles[0] / 100,
+            [stack / 100 for stack in hand_history.starting_stacks],
+            len(hand_history.players),
+        )
+    else:
+        state = create_state(
+            hand_history.blinds_or_straddles[0],
+            hand_history.starting_stacks,
+            len(hand_history.players),
+        )
     base_instruction = (
         INSTRUCTION_TUNED_PROMPT
         + "\n"
-        + get_hand_background(hand_history, player_number)
+        + get_hand_background(hand_history, player_number, phh_file)
     )
-    filtered_actions = filter_sm_actions(hand_history.actions)
+    filtered_actions = filter_sm_actions(hand_history.actions, phh_file)
 
     instruction = []
     response = []
@@ -222,7 +251,7 @@ def convert_hand_to_narrative_instruction_tuned(
         if action.startswith(f"p{player_number}"):
             stack_after = state.stacks[player_number - 1]
             value.append(extract_value_from_action(action, stack_before, stack_after))
-    if len(instruction) == 0 or simulation:
+    if len(instruction) == 0 and simulation:
         current_situation = get_current_situation(state, player_number)
         instruction.append(f"{base_instruction}\n{current_situation}")
 

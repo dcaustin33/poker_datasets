@@ -1,4 +1,4 @@
-from pokerkit import Automation, Mode, NoLimitTexasHoldem, HandHistory
+from pokerkit import Automation, HandHistory, Mode, NoLimitTexasHoldem
 
 
 def create_state(
@@ -97,13 +97,16 @@ def translate_action_into_state(
         raise ValueError(f"Invalid action: {action}")
     return state
 
-def filter_sm_actions(actions: list[str]) -> list[str]:
+def filter_sm_actions(actions: list[str], phh_file: bool = False) -> list[str]:
     """
     Filter out small actions
     """
     final_actions = []
     for action in actions:
         if "sm" not in action:
+            if phh_file and "cbr" in action:
+                action_value = float(action.split(" ")[2]) / 100
+                action = action.replace(f" {action.split(' ')[2]}", f" {action_value}")
             final_actions.append(action)
     return final_actions
 
