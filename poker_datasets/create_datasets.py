@@ -1,17 +1,20 @@
 import json
 import os
+import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
 import tqdm
-from hand_to_text import convert_hand_to_narrative2, convert_hand_to_narrative_instruction_tuned
+from hand_to_text import (
+    convert_hand_to_narrative2,
+    convert_hand_to_narrative_instruction_tuned,
+)
 from pokerbench_translator import (
     create_pokerkit_state_postflop,
     create_pokerkit_state_preflop,
 )
 from pokerkit import HandHistory
 from utils import verify_hand
-import random
 
 
 def process_phh_file(file_info, instruction_tuned=False):
@@ -36,7 +39,7 @@ def process_phh_file(file_info, instruction_tuned=False):
         for player_number in range(1, 7):
             if instruction_tuned:
                 # Get instruction tuning data (returns tuple of lists)
-                instruction_data = convert_hand_to_narrative_instruction_tuned(hand_history, player_number)
+                instruction_data = convert_hand_to_narrative_instruction_tuned(hand_history, player_number, phh_file=True)
                 if instruction_data and len(instruction_data[0]) > 0:  # Check if we have data
                     instructions, responses, values = instruction_data
                     # Create JSON objects for each decision point
@@ -48,7 +51,7 @@ def process_phh_file(file_info, instruction_tuned=False):
                         })
             else:
                 # Get pretraining narrative (returns tuple of narrative and values)
-                narrative_data = convert_hand_to_narrative2(hand_history, player_number)
+                narrative_data = convert_hand_to_narrative2(hand_history, player_number, phh_file=True)
                 if narrative_data and narrative_data[0]:  # Check if we have a narrative
                     narrative, values = narrative_data
                     results.append({
@@ -347,10 +350,10 @@ def create_combined_dataset(
 if __name__ == "__main__":
     # Example usage
 
-    # path_to_pokerbench_preflop_train = "/Users/derek/Desktop/poker_datasets/datasets/preflop_60k_train_set_game_scenario_information.csv"
-    # path_to_pokerbench_postflop_train = "/Users/derek/Desktop/poker_datasets/datasets/postflop_500k_train_set_game_scenario_information.csv"
-    # path_to_pokerbench_preflop_train = "/Users/derek/Desktop/poker_datasets/datasets/preflop_1k_test_set_game_scenario_information.csv"
-    # path_to_pokerbench_postflop_train = "/Users/derek/Desktop/poker_datasets/datasets/postflop_10k_test_set_game_scenario_information.csv"
+    path_to_pokerbench_preflop_train = "/Users/derek/Desktop/poker_datasets/datasets/preflop_60k_train_set_game_scenario_information.csv"
+    path_to_pokerbench_postflop_train = "/Users/derek/Desktop/poker_datasets/datasets/postflop_500k_train_set_game_scenario_information.csv"
+    path_to_pokerbench_preflop_test = "/Users/derek/Desktop/poker_datasets/datasets/preflop_1k_test_set_game_scenario_information.csv"
+    path_to_pokerbench_postflop_test = "/Users/derek/Desktop/poker_datasets/datasets/postflop_10k_test_set_game_scenario_information.csv"
     
     
     # these are for if we want a quick test
@@ -360,8 +363,8 @@ if __name__ == "__main__":
     path_to_pluribus_hands = "/Users/derek/Desktop/phh-dataset/data/pluribus"
     max_workers = os.cpu_count()
     pluribus_percentage_train = 0.8
-    output_path_train = "/Users/derek/Desktop/poker_datasets/datasets/pluribus_all_narratives_it_train.json"
-    output_path_test = "/Users/derek/Desktop/poker_datasets/datasets/pluribus_all_narratives_it_test.json"
+    output_path_train = "/Users/derek/Desktop/poker_datasets/datasets/pluribus_it_train.json"
+    output_path_test = "/Users/derek/Desktop/poker_datasets/datasets/pluribus_it_test.json"
     instruction_tuned = True
 
     example_narratives = create_combined_dataset(
