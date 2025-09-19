@@ -12,10 +12,6 @@ def create_state(
     We also assume stacks are in order of sb first, bb second, etc.
     6 players is the max for now
     """
-    assert player_count <= 6, "6 players is the max for now"
-    assert (
-        len(starting_stacks) == player_count
-    ), "Starting stacks must be in order of sb first, bb second, etc."
 
     big_blind = 2 * small_blind
     return NoLimitTexasHoldem.create_state(
