@@ -251,8 +251,9 @@ def convert_hand_to_narrative_instruction_tuned(
         if action.startswith(f"p{player_number}"):
             stack_after = state.stacks[player_number - 1]
             value.append(extract_value_from_action(action, stack_before, stack_after))
-    if len(instruction) == 0 and simulation:
+            
+    # means the player is up
+    if (simulation and state.actor_index == (player_number - 1)) or len(instruction) == 0:
         current_situation = get_current_situation(state, player_number)
         instruction.append(f"{base_instruction}\n{current_situation}")
-
     return instruction, response, value
