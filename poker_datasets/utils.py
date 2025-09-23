@@ -4,7 +4,7 @@ from pokerkit import Automation, HandHistory, Mode, NoLimitTexasHoldem
 def create_state(
     small_blind: int,
     starting_stacks: list[int],
-    player_count: int = 6,
+    player_count: int,
 ) -> NoLimitTexasHoldem:
     """
     We assume big blind is 2x small blind and min bet is big blind
@@ -12,10 +12,6 @@ def create_state(
     We also assume stacks are in order of sb first, bb second, etc.
     6 players is the max for now
     """
-    assert player_count <= 6, "6 players is the max for now"
-    assert (
-        len(starting_stacks) == player_count
-    ), "Starting stacks must be in order of sb first, bb second, etc."
 
     big_blind = 2 * small_blind
     return NoLimitTexasHoldem.create_state(
@@ -42,8 +38,8 @@ def create_state(
     
 def create_hand_history(
     actions: list[str],
-    starting_stacks: list[int] = [100, 100, 100, 100, 100, 100],
-    blinds_or_straddles: list[int] = [0.5, 1],
+    starting_stacks: list[int],
+    blinds_or_straddles: list[int],
 ) -> HandHistory:
     """
     Creates a hand histor for poker bench
@@ -111,13 +107,13 @@ def filter_sm_actions(actions: list[str], phh_file: bool = False) -> list[str]:
     return final_actions
 
 def verify_hand(
-    actions: list[str], small_blind: int, starting_stacks: list[int]
+    actions: list[str], small_blind: int, starting_stacks: list[int], player_count: int
 ) -> bool:
     """
     Verify that the actions are valid for the given state
     """
     state = create_state(
-        small_blind, starting_stacks, player_count=len(starting_stacks)
+        small_blind, starting_stacks, player_count
     )
     filtered_actions = filter_sm_actions(actions)
     for action in filtered_actions:
