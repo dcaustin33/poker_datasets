@@ -32,6 +32,7 @@ def process_phh_file(file_info, instruction_tuned=False):
             hand_history.actions,
             hand_history.blinds_or_straddles[0],
             hand_history.starting_stacks,
+            len(hand_history.starting_stacks),
         ):
             return results
 
@@ -105,7 +106,6 @@ def create_pluribus_dataset(
     train_narratives = []
     test_narratives = []
 
-    # Process files in parallel
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all tasks
         future_to_file = {
@@ -143,6 +143,7 @@ def process_dataframe_row(args):
                 hand_history.actions,
                 hand_history.blinds_or_straddles[0],
                 hand_history.starting_stacks,
+                len(hand_history.starting_stacks),
             ):
                 return None
             filtered_actions = filter_sm_actions(hand_history.actions)
@@ -182,6 +183,7 @@ def process_dataframe_row(args):
                 hand_history.actions,
                 hand_history.blinds_or_straddles[0],
                 hand_history.starting_stacks,
+                len(hand_history.starting_stacks),
             ):
                 return None
             filtered_actions = filter_sm_actions(hand_history.actions)
@@ -253,9 +255,15 @@ def convert_dataframe_to_narratives(
     text_narratives = []
 
     # Process rows in parallel
-    import pdb
+    # for row in row_args:
+    #     result = process_dataframe_row(row)
+    #     if result:
+    #         print(result[0]['filtered_actions'])
+    #         print(result[-1]['instruction'])
+    #         print(result[-1]['response'])
+    #         text_narratives.append(result)
+    #         import pdb; pdb.set_trace()
 
-    pdb.set_trace()
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         # Submit all tasks
         future_to_idx = {
