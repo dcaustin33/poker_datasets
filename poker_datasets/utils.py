@@ -1,3 +1,4 @@
+import numpy as np
 from pokerkit import Automation, HandHistory, Mode, NoLimitTexasHoldem
 
 
@@ -122,3 +123,10 @@ def verify_hand(
         except Exception as e:
             return False
     return True
+
+def dense_near_zero(N: int, p: float = 3) -> list[float]:
+    """
+    Create a dense list of numbers near zero
+    """
+    i = np.arange(N+1)  # includes 0 to N
+    return (i / N) ** p
