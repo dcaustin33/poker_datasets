@@ -403,24 +403,16 @@ def create_combined_dataset(
 if __name__ == "__main__":
     # Example usage
 
-    path_to_pokerbench_preflop_train = "/Users/derek/Desktop/poker_datasets/datasets/preflop_60k_train_set_game_scenario_information.csv"
-    path_to_pokerbench_postflop_train = "/Users/derek/Desktop/poker_datasets/datasets/postflop_500k_train_set_game_scenario_information.csv"
-    path_to_pokerbench_preflop_test = "/Users/derek/Desktop/poker_datasets/datasets/preflop_1k_test_set_game_scenario_information.csv"
-    path_to_pokerbench_postflop_test = "/Users/derek/Desktop/poker_datasets/datasets/postflop_10k_test_set_game_scenario_information.csv"
+    path_to_pokerbench_preflop_train = ""
+    path_to_pokerbench_postflop_train = ""
+    path_to_pokerbench_preflop_test = ""
+    path_to_pokerbench_postflop_test = ""
 
-    # these are for if we want a quick test
-    # path_to_pokerbench_preflop_train = "/Users/derek/Desktop/poker_datasets/datasets/preflop_1k_test_set_game_scenario_information.csv"
-    # path_to_pokerbench_postflop_train = "/Users/derek/Desktop/poker_datasets/datasets/postflop_10k_test_set_game_scenario_information.csv"
-
-    path_to_pluribus_hands = "/Users/derek/Desktop/phh-dataset/data/pluribus"
+    path_to_pluribus_hands = ""
     max_workers = os.cpu_count()
     pluribus_percentage_train = 0.8
-    output_path_train = (
-        "/Users/derek/Desktop/poker_datasets/datasets/all_narratives_it_train.json"
-    )
-    output_path_test = (
-        "/Users/derek/Desktop/poker_datasets/datasets/all_narratives_it_test.json"
-    )
+    output_path_train = ""
+    output_path_test = ""
     instruction_tuned = True
 
     example_narratives = create_combined_dataset(

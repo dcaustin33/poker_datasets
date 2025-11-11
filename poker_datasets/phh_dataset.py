@@ -57,4 +57,4 @@ def navigate_all_pluribus(pluribus_path: str):
 
 
 if __name__ == "__main__":
-    navigate_all_pluribus("/Users/derek/Desktop/phh-dataset/data/pluribus")
+    navigate_all_pluribus("")
