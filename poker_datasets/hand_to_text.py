@@ -89,7 +89,7 @@ def extract_player_number(action: str) -> int:
 def get_current_situation(state, player_number: int) -> str:
     """"""
     return (
-        f"Pot size: {state.total_pot_amount}, needed bet: {state.checking_or_calling_amount}, "
+        f"Pot size: {round(state.total_pot_amount, 2)}, needed bet: {round(state.checking_or_calling_amount, 2)}, "
         f"minimum raise: {state.min_completion_betting_or_raising_to_amount}, my stack: {state.stacks[player_number - 1]}"
     )
 
@@ -253,7 +253,7 @@ def convert_hand_to_narrative_instruction_tuned(
             value.append(extract_value_from_action(action, stack_before, stack_after))
             
     # means the player is up
-    if (simulation and state.actor_index == (player_number - 1)) or len(instruction) == 0:
+    if (simulation and state.actor_index == (player_number - 1)):
         current_situation = get_current_situation(state, player_number)
         instruction.append(f"{base_instruction}\n{current_situation}")
     return instruction, response, value
